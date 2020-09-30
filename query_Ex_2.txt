@@ -1,0 +1,23 @@
+Самый популярный автор при наличии связей «многие ко многим».
+SELECT * 
+FROM authors 
+WHERE author_id IN (SELECT author_id
+                    FROM m2m_Authors_Books m
+                    JOIN (SELECT b.book_id, count(*) AS count_read
+                          FROM books b
+                          JOIN accounting_of_books a
+                          ON a.book_id = b.book_id
+                          WHERE start_date > (SYSDATE-365)
+                          GROUP BY b.book_id) book_count 
+                    ON book_count.book_id = m.book_id
+                    GROUP BY author_id
+                    HAVING SUM(count_read) IN (SELECT MAX(SUM(count_read))
+                                               FROM m2m_Authors_Books m
+                                               JOIN (SELECT ac.book_id, count(*) AS count_read
+                                               FROM accounting_of_books ac
+                                               JOIN books b
+                                               ON ac.book_id = b.book_id
+                                               WHERE start_date > (SYSDATE-365)
+                                               GROUP BY ac.book_id)   book_count 
+                                               ON book_count.book_id = m.book_id
+                                               GROUP BY author_id));
